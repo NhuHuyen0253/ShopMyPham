@@ -16,4 +16,8 @@
         <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded">Lưu</button>
     </form>
 </div>
+<a href="{{ route('admin.brand.index') }}"
+           class="inline-flex items-center justify-center px-4 py-2 rounded-xl border text-gray-600 hover:bg-gray-50 text-sm">
+            ← Quay lại danh sách
+</a>
 @endsection

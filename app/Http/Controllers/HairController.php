@@ -19,12 +19,16 @@ class HairController extends Controller
     }
 
     public function category($slug)
-    {
-        $categories = Category::where('type', 'hair')->get();
+{
+    $categories = Category::where('type', 'hair')->get();
 
-        $category = Category::where('slug', $slug)->firstOrFail();
-        $products = Product::where('category_id', $category->id)->paginate(9);
+    $category = Category::where('type', 'hair')
+        ->where('slug', $slug)
+        ->firstOrFail();
 
-        return view('hair', compact('categories', 'products'));
-    }
+    $products = Product::where('category_id', $category->id)->paginate(9);
+    // hoặc: $products = $category->products()->paginate(9);
+
+    return view('hair', compact('categories', 'products'));
+}
 }

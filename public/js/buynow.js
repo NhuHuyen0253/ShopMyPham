@@ -1,98 +1,156 @@
-// buynow.js
-// Helpers cho modal (xem nhanh / mua ngay)
 (function () {
   'use strict';
 
-  function setupModal(modalEl, { productId, name, price, quantity = 1 }) {
-    if (!modalEl) return;
-    const $ = (sel) => modalEl.querySelector(sel);
+  const FALLBACK_IMG =
+    "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='72' height='72'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='10'>no image</text></svg>";
 
-    const productIdInput = $('input[name="product_id"]');
-    const nameInput      = $('input[name="product_name"]');
-    const priceInput     = $('input[name="price"]');
-    const qtyInput       = $('input[name="quantity"]');
-
-    if (productIdInput) productIdInput.value = productId;
-    if (nameInput)      nameInput.value      = name;
-    if (priceInput)     priceInput.value     = price;
-    if (qtyInput)       qtyInput.value       = quantity;
+  function toNumberPrice(p) {
+    if (typeof p === 'number') return p;
+    if (typeof p === 'string') {
+      const cleaned = p.replace(/[^\d]/g, '');
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    }
+    return 0;
   }
 
-  function openModalWithProduct(id, name, price, image) {
-    const modal = document.getElementById('productModal');
-    if (!modal) return;
-
-    setupModal(modal, { productId: id, name, price, quantity: 1 });
-
-    const imgEl   = modal.querySelector('#modalImage');
-    const nameEl  = modal.querySelector('#modalName');
-    const priceEl = modal.querySelector('#modalPrice');
-
-    if (imgEl)   imgEl.src = image;
-    if (nameEl)  nameEl.textContent = name;
-    if (priceEl) priceEl.textContent = Number(price).toLocaleString('vi-VN') + ' đ';
-
-    const addBtn = document.getElementById('addToCartBtn');
-    const formBN = document.getElementById('buyNowForm');
-    if (addBtn) { addBtn.style.display = 'block'; addBtn.dataset.id = id; }
-    if (formBN) formBN.style.display = 'none';
-
-    modal.style.display = 'flex';
+  function fmtVND(n) {
+    return (n || 0).toLocaleString('vi-VN') + ' đ';
   }
 
-  function openBuyNowModal(id, name, price, image) {
-    const modal = document.getElementById('buynowModal');
-    if (!modal) return;
+  function $id(id) {
+    return document.getElementById(id);
+  }
 
-    const qtyFromProductModal = parseInt(document.getElementById('quantity')?.value || '1', 10) || 1;
+  function updateTotal() {
+    const priceEl = $id('bn-price');
+    const qtyEl   = $id('bn-qty');
+    const totalEl = $id('bn-total');
+    if (!priceEl || !qtyEl || !totalEl) return;
 
-    setupModal(modal, { productId: id, name, price, quantity: qtyFromProductModal });
+    const nPrice = toNumberPrice(priceEl.dataset.rawPrice ?? priceEl.textContent);
+    const q = Math.max(1, parseInt(qtyEl.value || '1', 10));
+    totalEl.textContent = fmtVND(nPrice * q);
+  }
 
-    const imgEl   = modal.querySelector('#buynowImage');
-    const nameEl  = modal.querySelector('#buynowName');
-    const priceEl = modal.querySelector('#buynowPrice');
-    const totalEl = modal.querySelector('#buynowTotal');
-    const qtyEl   = modal.querySelector('input[name="quantity"]');
+  function populateBuyNowModal({ id, name, price, image }) {
+    const nPrice  = toNumberPrice(price);
+    const nameEl  = $id('bn-name');
+    const priceEl = $id('bn-price');
+    const imgEl   = $id('bn-image');
+    const qtyEl   = $id('bn-qty');
+    const pidEl   = $id('bn-product-id');
 
-    if (imgEl)   imgEl.src = image;
-    if (nameEl)  nameEl.textContent = name;
-    if (priceEl) priceEl.textContent = Number(price).toLocaleString('vi-VN') + ' đ';
-
-    const updateTotal = () => {
-      const q = parseInt(qtyEl?.value || '1', 10) || 1;
-      if (totalEl) totalEl.textContent = 'Thành tiền: ' + (Number(price) * q).toLocaleString('vi-VN') + ' đ';
-    };
-    qtyEl?.addEventListener('input', updateTotal);
+    if (nameEl) nameEl.textContent = name ?? '';
+    if (priceEl) {
+      priceEl.textContent = fmtVND(nPrice);
+      priceEl.dataset.rawPrice = String(nPrice);
+    }
+    if (imgEl) {
+      const fb = imgEl.dataset.fallback || imgEl.getAttribute('src') || FALLBACK_IMG;
+      imgEl.src = image || fb;
+      imgEl.alt = name || 'product';
+    }
+    if (qtyEl) qtyEl.value = 1;
+    if (pidEl) pidEl.value = id ?? '';
     updateTotal();
-
-    const productModal = document.getElementById('productModal');
-    if (productModal) productModal.style.display = 'none';
-    modal.style.display = 'flex';
   }
 
-  function increaseQty(inputId = 'quantity') {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    input.value = parseInt(input.value || '1', 10) + 1;
-    input.dispatchEvent(new Event('input'));
-  }
+  window.openBuyNowModal = function (id, name, price, image) {
+    const modal = $id('buyNowModal');
+    if (!modal) return;
 
-  function decreaseQty(inputId = 'quantity') {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    input.value = Math.max(1, parseInt(input.value || '1', 10) - 1);
-    input.dispatchEvent(new Event('input'));
-  }
+    populateBuyNowModal({ id, name, price, image });
 
-  function closeModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'none';
-  }
+    try {
+      if (window.bootstrap?.Modal) {
+        window.bootstrap.Modal.getOrCreateInstance(modal).show();
+      } else {
+        throw new Error('no bootstrap');
+      }
+    } catch {
+      modal.style.display = 'flex';
+      modal.classList.add('show');
+      modal.setAttribute('aria-modal', 'true');
+      modal.removeAttribute('aria-hidden');
+    }
+  };
 
-  // Expose cho HTML nếu cần gọi trực tiếp
-  window.openModalWithProduct = openModalWithProduct;
-  window.openBuyNowModal      = openBuyNowModal;
-  window.increaseQty          = increaseQty;
-  window.decreaseQty          = decreaseQty;
-  window.closeModal           = closeModal;
+  document.addEventListener('show.bs.modal', function (ev) {
+    const modal = ev.target;
+    if (modal.id !== 'buyNowModal') return;
+
+    const btn = ev.relatedTarget;
+    if (!btn) return;
+
+    populateBuyNowModal({
+      id:    Number(btn.dataset.id || 0),
+      name:  btn.dataset.name || '',
+      price: btn.dataset.price || '0',
+      image: btn.dataset.image || ''
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    const t = e.target.closest('.thumb');
+    if (!t) return;
+
+    const src  = t.dataset.src;
+    const main = $id('mainImg');
+    const btn  = $id('btnBuyNow');
+
+    if (src && main) main.src = src;
+    if (src && btn)  btn.dataset.image = src;
+
+    const modal = $id('buyNowModal');
+    if (modal && modal.classList.contains('show')) {
+      const imgEl = $id('bn-image');
+      if (imgEl) imgEl.src = src || (imgEl.dataset.fallback || FALLBACK_IMG);
+    }
+  });
+
+  window.increaseQty = function () {
+    const qty = $id('bn-qty');
+    if (!qty) return;
+    qty.value = Math.max(1, parseInt(qty.value || '1', 10) + 1);
+    updateTotal();
+  };
+
+  window.decreaseQty = function () {
+    const qty = $id('bn-qty');
+    if (!qty) return;
+    qty.value = Math.max(1, parseInt(qty.value || '1', 10) - 1);
+    updateTotal();
+  };
+
+  document.addEventListener('input', function (e) {
+    if ((e.target instanceof HTMLInputElement) && e.target.id === 'bn-qty') {
+      updateTotal();
+    }
+  });
+
+  document.addEventListener('submit', function (e) {
+    const form = e.target;
+    if (form && form.id === 'bn-form') {
+      const q = $id('bn-qty')?.value || 1;
+      const qHidden = $id('bn-qty-hidden');
+      if (qHidden) qHidden.value = Math.max(1, parseInt(q, 10));
+    }
+  });
+
+  window.closeBNModal = function () {
+    const modal = $id('buyNowModal');
+    if (!modal) return;
+
+    try {
+      const inst = window.bootstrap?.Modal?.getInstance?.(modal);
+      if (inst) inst.hide();
+      else throw new Error('no inst');
+    } catch {
+      modal.style.display = 'none';
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden', 'true');
+      modal.removeAttribute('aria-modal');
+    }
+  };
 })();

@@ -24,8 +24,7 @@ class CategorySeeder extends Seeder
         ['name' => 'Tẩy Tế Bào Chết Da Mặt', 'slug' => 'tay-te-bao-chet-da-mat', 'type' => 'face'],
         ['name' => 'Toner / Nước Cân Bằng Da', 'slug' => 'toner-nuoc-can-bang-da', 'type' => 'face'],
         ['name' => 'Đặc Trị', 'slug' => 'dac-tri', 'type' => 'face'],
-        ['name' => 'Dưỡng Ẩm', 'slug' => 'duong-am', 'type' => 'face'],
-        ['name' => 'Dưỡng Mắt', 'slug' => 'duong-mat', 'type' => 'face'],
+        ['name' => 'Dưỡng Da', 'slug' => 'duong-am', 'type' => 'face'],
         ['name' => 'Dưỡng Môi', 'slug' => 'duong-moi', 'type' => 'face'],
         ['name' => 'Mặt Nạ', 'slug' => 'mat-na', 'type' => 'face'],
         ['name' => 'Chống Nắng Da Mặt', 'slug' => 'chong-nang-da-mat', 'type' => 'face'],
@@ -50,7 +49,7 @@ class CategorySeeder extends Seeder
         ['name' => 'Khử Mùi Cơ Thể', 'slug' => 'khu-mui-co-the', 'type' => 'body'],
         ['name' => 'Dụng Cụ Tắm', 'slug' => 'dung-cu-tam', 'type' => 'body'],
         ['name' => 'Tẩy Lông', 'slug' => 'tay-long', 'type' => 'body'],
-        ['name' => 'Dụng Cụ Tẩy Lông', 'slug' => 'dung-cu-tay-long', 'type' => 'body'],
+        ['name' => 'DUng Dịch Vệ Sinh', 'slug' => 'dung-dich-ve-sinh', 'type' => 'body'],
 
         //Makeup
         ['name' => 'Kem Lót', 'slug' => 'kem-lot', 'type' => 'makeup'],
@@ -66,6 +65,7 @@ class CategorySeeder extends Seeder
         ['name' => 'Mascara', 'slug' => 'mascara', 'type' => 'makeup'],
         ['name' => 'Son', 'slug' => 'son', 'type' => 'makeup'],
         ['name' => 'Dụng Cụ Trang Điểm', 'slug' => 'dung-cu-trang-diem', 'type' => 'makeup'],
+        ['name' => 'Tẩy trang mắt/môi', 'slug' => 'tay-trang-mat-moi', 'type' => 'makeup'],
         
     ];
 

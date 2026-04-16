@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -8,28 +9,47 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
-
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
-    public function dashboard()
+    public function dashboard(Request $request)
     {
-       $totalProducts = Product::count();
+        $totalProducts = Product::count();
         $todayOrders = Order::whereDate('created_at', now()->toDateString())->count();
         $totalUsers = User::count();
-        $newProducts = Product::latest()->take(1)->get();
-        $newOrders = Order::latest()->take(1)->with('user')->get();
-        $lowStock = Product::where('quantity', '<', 5)->get();
 
-        return view('admin.dashboard', compact('totalProducts', 'todayOrders', 'totalUsers','newProducts', 'newOrders', 'lowStock'));
+        // 1. Thông báo đơn hàng mới: chỉ lấy đơn chưa xử lý
+        $newOrders = Order::with('user')
+            ->whereIn('status', ['pending', 'awaiting_payment'])
+            ->latest()
+            ->simplePaginate(5, ['*'], 'orders_page');
+
+        // 2. Thông báo sản phẩm mới: chỉ lấy sản phẩm tạo trong 3 ngày gần đây
+        $newProducts = Product::where('created_at', '>=', Carbon::now()->subDays(3))
+            ->latest()
+            ->simplePaginate(5, ['*'], 'products_page');
+
+        // 3. Thông báo sắp hết hàng: chỉ hiện khi số lượng còn ít
+        $lowStock = Product::where('quantity', '<', 5)
+            ->latest()
+            ->simplePaginate(5, ['*'], 'lowstock_page');
+
+        return view('admin.dashboard', compact(
+            'totalProducts',
+            'todayOrders',
+            'totalUsers',
+            'newProducts',
+            'newOrders',
+            'lowStock'
+        ));
     }
-    // Hiển thị form thay đổi mật khẩu
+
     public function showChangePasswordForm()
     {
         return view('admin.change-password');
     }
 
-    // Xử lý cập nhật mật khẩu
     public function changePassword(Request $request)
     {
         $request->validate([
@@ -37,7 +57,7 @@ class AdminController extends Controller
             'new_password' => 'required|string|min:8|confirmed',
         ]);
 
-        $admin = Auth::guard('admin')->user(); // Nếu không có guard riêng, dùng Auth::user()
+        $admin = Auth::guard('admin')->user();
 
         if (!Hash::check($request->current_password, $admin->password)) {
             return back()->with('error', 'Mật khẩu hiện tại không chính xác.');
@@ -46,11 +66,6 @@ class AdminController extends Controller
         $admin->password = Hash::make($request->new_password);
         $admin->save();
 
-        return back()->with('success', 'Mật khẩu đã được thay đổi thành công!');
+        return redirect()->route('admin.dashboard')->with('success', 'Đổi mật khẩu thành công ✅');
     }
-
-
 }
-
-
-    

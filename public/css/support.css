@@ -1,0 +1,46 @@
+.support-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.support-contacts {
+  margin: 12px 0 24px;
+  padding-left: 18px;
+}
+
+.support-contacts a { color: #e91e63; text-decoration: none; }
+.support-contacts a:hover { text-decoration: underline; }
+
+.support-sections {
+  background: #fde7ef;          /* hồng nhạt */
+  border-radius: 14px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+.support-section h3 {
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.support-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.support-section ul li { margin: 6px 0; }
+.support-section ul a { color: #333; text-decoration: none; }
+.support-section ul a:hover { text-decoration: underline; }
+
+.support-callout {
+  margin-top: 14px;
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .support-sections { grid-template-columns: repeat(3, 1fr); }
+}

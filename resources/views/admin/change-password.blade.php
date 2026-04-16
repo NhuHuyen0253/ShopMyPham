@@ -1,43 +1,109 @@
-@extends('admin.layout') 
+@extends('admin.layout')
+
 @section('content')
-<div class="max-w-md mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Thay đổi mật khẩu</h2>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-9 col-lg-6 col-xl-5">
+            <div class="password-card bg-white shadow-sm rounded-4 overflow-hidden border-0">
+                
+                <div class="password-card-header text-center text-white py-4 px-4">
+                    <div class="password-icon mx-auto mb-3">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h2 class="fw-bold mb-1">Thay đổi mật khẩu</h2>
+                </div>
 
-    @if(session('success'))
-        <div class="bg-green-100 text-green-700 p-3 rounded mb-4">
-            {{ session('success') }}
+                <div class="p-4 p-md-5">
+                    @if(session('success'))
+                        <div class="alert custom-alert-success d-flex align-items-start gap-3 rounded-4 border-0 mb-4">
+                            <div class="alert-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold mb-1">Thành công</div>
+                                <div>{{ session('success') }}</div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert custom-alert-danger d-flex align-items-start gap-3 rounded-4 border-0 mb-4">
+                            <div class="alert-icon">
+                                <i class="fas fa-exclamation-circle"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold mb-1">Có lỗi xảy ra</div>
+                                <div>{{ session('error') }}</div>
+                            </div>
+                        </div>
+                    @endif
+
+                    <form action="{{ route('admin.password.update') }}" method="POST" class="password-form">
+                        @csrf
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-dark">Mật khẩu hiện tại</label>
+                            <div class="input-group custom-input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-key"></i>
+                                </span>
+                                <input
+                                    type="password"
+                                    name="current_password"
+                                    required
+                                    class="form-control custom-input @error('current_password') is-invalid @enderror"
+                                    placeholder="Nhập mật khẩu hiện tại"
+                                >
+                            </div>
+                            @error('current_password')
+                                <div class="text-danger small mt-2">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-dark">Mật khẩu mới</label>
+                            <div class="input-group custom-input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input
+                                    type="password"
+                                    name="new_password"
+                                    required
+                                    class="form-control custom-input @error('new_password') is-invalid @enderror"
+                                    placeholder="Nhập mật khẩu mới"
+                                >
+                            </div>
+                            @error('new_password')
+                                <div class="text-danger small mt-2">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-dark">Xác nhận mật khẩu mới</label>
+                            <div class="input-group custom-input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-shield-alt"></i>
+                                </span>
+                                <input
+                                    type="password"
+                                    name="new_password_confirmation"
+                                    required
+                                    class="form-control custom-input"
+                                    placeholder="Nhập lại mật khẩu mới"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn password-submit-btn rounded-3 py-3 fw-semibold">
+                                <i class="fas fa-save me-2"></i>Cập nhật mật khẩu
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-    @endif
-
-    @if(session('error'))
-        <div class="bg-red-100 text-red-700 p-3 rounded mb-4">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    <form action="{{ route('admin.password.update') }}" method="POST">
-        @csrf
-
-        <div class="mb-4">
-            <label class="block text-gray-700">Mật khẩu hiện tại</label>
-            <input type="password" name="current_password" required class="w-full mt-1 p-2 border rounded">
-            @error('current_password') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
-        </div>
-
-        <div class="mb-4">
-            <label class="block text-gray-700">Mật khẩu mới</label>
-            <input type="password" name="new_password" required class="w-full mt-1 p-2 border rounded">
-            @error('new_password') <p class="text-red-500 text-sm mt-1">{{ $message }}</p> @enderror
-        </div>
-
-        <div class="mb-4">
-            <label class="block text-gray-700">Xác nhận mật khẩu mới</label>
-            <input type="password" name="new_password_confirmation" required class="w-full mt-1 p-2 border rounded">
-        </div>
-
-        <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded">
-            Cập nhật mật khẩu
-        </button>
-    </form>
+    </div>
 </div>
 @endsection

@@ -2,268 +2,174 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Brands;
 use App\Models\Product;
-use App\Models\ProductImage;
-use App\Models\Category;
+use App\Models\Review;
+use App\Models\Wishlist;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
-    public function index()
-    {
-        $products = Product::latest()->paginate(20);
-        return view('admin.products.index', compact('products'));
+    public function show(Request $request, $id)
+{
+    $product = Product::findOrFail($id);
+
+    // Lưu lịch sử xem sản phẩm vào session
+    $recentlyViewed = session()->get('recently_viewed_products', []);
+
+    // Xóa nếu sản phẩm hiện tại đã có trong danh sách để đẩy lên đầu
+    $recentlyViewed = array_values(array_filter(
+        $recentlyViewed,
+        fn ($productId) => (int) $productId !== (int) $product->id
+    ));
+
+    array_unshift($recentlyViewed, $product->id);
+
+    // Giới hạn 12 sản phẩm đã xem gần nhất
+    $recentlyViewed = array_slice($recentlyViewed, 0, 12);
+
+    session()->put('recently_viewed_products', $recentlyViewed);
+
+    // Lấy danh sách sản phẩm đã xem trước đó, bỏ sản phẩm hiện tại
+    $recentlyViewedIds = array_values(array_filter(
+        $recentlyViewed,
+        fn ($productId) => (int) $productId !== (int) $product->id
+    ));
+
+    $recentlyViewedProducts = collect();
+
+    if (!empty($recentlyViewedIds)) {
+        $recentlyViewedProducts = Product::whereIn('id', $recentlyViewedIds)
+            ->get()
+            ->sortBy(fn ($item) => array_search($item->id, $recentlyViewedIds))
+            ->values();
     }
 
-    public function create()
-    {
-        $categories = Category::all();
-        $brands = Brands::all();
-        return view('admin.products.create', compact('categories', 'brands'));
+    // Nếu chưa có lịch sử xem thì fallback sang sản phẩm liên quan
+    if ($recentlyViewedProducts->isEmpty()) {
+        $recentlyViewedProducts = Product::where('category_id', $product->category_id)
+            ->where('id', '!=', $product->id)
+            ->orderByRaw('brand_id = ? DESC', [$product->brand_id])
+            ->limit(8)
+            ->get();
+    } else {
+        // Nếu có lịch sử xem thì chỉ lấy tối đa 8 sản phẩm để hiển thị
+        $recentlyViewedProducts = $recentlyViewedProducts->take(8)->values();
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name'                => 'required|string|max:255',
-            'price'               => 'required|numeric|min:0',
-            'quantity'            => 'required|integer|min:0',
-            'category_id'         => 'required|exists:categories,id',
-            'brand_id'            => 'required|exists:brands,id',
-            'description'         => 'nullable|string',
-            'usage_instructions'  => 'nullable|string',
-            'is_hotdeal'          => 'nullable|boolean',             // <--
-            'image'               => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'images.*'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-        ]);
+    // ===== THÊM PHẦN DUNG TÍCH Ở ĐÂY =====
+    $capacityProducts = collect();
 
-        // Map tường minh
-        $product = new Product();
-        $product->name               = $validated['name'];
-        $product->price              = $validated['price'];
-        $product->quantity           = $validated['quantity'];
-        $product->category_id        = $validated['category_id'];
-        $product->brand_id           = $validated['brand_id'];
-        $product->description        = $request->input('description');
-        $product->usage_instructions = $request->input('usage_instructions');
-        $product->is_hotdeal         = $request->boolean('is_hotdeal'); // <--
-
-        // Ảnh chính
-        if ($request->hasFile('image')) {
-            $file  = $request->file('image');
-            if ($file->isValid()) { // <--
-                $fname = Str::uuid()->toString().'.'.$file->getClientOriginalExtension();
-                $dest  = public_path('images/product');
-                if (!is_dir($dest)) { @mkdir($dest, 0775, true); }
-                $file->move($dest, $fname);
-                if (\Schema::hasColumn('products', 'image')) {
-                    $product->image = $fname;
-                }
-            }
-        }
-
-        $product->save();
-
-        // Gallery
-        $galleryPath = 'images/product/gallery';
-        if (!is_dir(public_path($galleryPath))) {
-            @mkdir(public_path($galleryPath), 0775, true);
-        }
-
-        $alts  = (array) $request->input('alt_new', []);
-        $sorts = (array) $request->input('sort_new', []);
-        $i = 0;
-
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $file) {
-                if (!$file->isValid()) continue;
-                $fname = Str::uuid()->toString().'.'.$file->getClientOriginalExtension();
-                $file->move(public_path($galleryPath), $fname);
-
-                ProductImage::create([
-                    'product_id' => $product->id,
-                    'file_name'  => $fname,
-                    'path'       => $galleryPath,
-                    'alt'        => $alts[$i] ?? null,
-                    'sort_order' => is_numeric($sorts[$i] ?? null) ? (int) $sorts[$i] : 0,
-                ]);
-                $i++;
-            }
-        }
-
-        return redirect()->route('admin.product.index')->with('success', 'Tạo sản phẩm thành công');
+    if (!empty($product->group_code)) {
+        $capacityProducts = Product::where('group_code', $product->group_code)
+            ->whereNotNull('capacity')
+            ->orderByRaw("
+                CASE
+                    WHEN LOWER(capacity) = '30ml' THEN 1
+                    WHEN LOWER(capacity) = '50ml' THEN 2
+                    WHEN LOWER(capacity) = '75ml' THEN 3
+                    WHEN LOWER(capacity) = '100ml' THEN 4
+                    WHEN LOWER(capacity) = '120ml' THEN 5
+                    WHEN LOWER(capacity) = '150ml' THEN 6
+                    WHEN LOWER(capacity) = '180ml' THEN 7
+                    WHEN LOWER(capacity) = '200ml' THEN 8
+                    WHEN LOWER(capacity) = '250ml' THEN 9
+                    WHEN LOWER(capacity) = '300ml' THEN 10
+                    WHEN LOWER(capacity) = '350ml' THEN 11
+                    WHEN LOWER(capacity) = '400ml' THEN 12
+                    WHEN LOWER(capacity) = '500ml' THEN 13
+                    WHEN LOWER(capacity) = '700ml' THEN 14
+                    WHEN LOWER(capacity) = '1000ml' THEN 15
+                    ELSE 999
+                END ASC, id ASC
+            ")
+            ->get();
     }
 
-    public function show($id)
-    {
-        $product = Product::with('images')->findOrFail($id);
-        return view('show', compact('product'));
+    // JSON / AJAX (ví dụ cho buynow.js)
+    if ($request->wantsJson() || $request->ajax()) {
+        return response()->json([
+            'id'    => $product->id,
+            'name'  => $product->name,
+            'price' => (int) $product->price,
+            'image' => $product->image
+                ? asset('images/product/' . $product->image)
+                : null,
+        ], 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
-    public function edit($id)
-    {
-        $product    = Product::with('images')->findOrFail($id);
-        $categories = Category::all();
-        $brands     = Brands::all();
-        return view('admin.products.edit', compact('product', 'categories', 'brands'));
+    // -------- PHẦN REVIEW --------
+    $ratingFilter = (int) $request->get('rating');
+
+    $reviewsQuery = Review::where('product_id', $product->id)
+        ->where('status', 'approved')
+        ->latest();
+
+    if ($ratingFilter >= 1 && $ratingFilter <= 5) {
+        $reviewsQuery->where('rating', $ratingFilter);
     }
 
-    public function update(Request $request, $id)
-    {
-        $product = Product::with('images')->findOrFail($id);
+    $reviews = $reviewsQuery->paginate(5)->withQueryString();
 
-        $validated = $request->validate([
-            'name'                => 'required|string|max:255',
-            'price'               => 'required|numeric|min:0',
-            'quantity'            => 'required|integer|min:0',
-            'category_id'         => 'required|exists:categories,id',
-            'brand_id'            => 'required|exists:brands,id',
-            'description'         => 'nullable|string',
-            'usage_instructions'  => 'nullable|string',
-            'is_hotdeal'          => 'nullable|boolean',             // <--
-            // Ảnh chính: form dùng "image"; hỗ trợ thêm "main_image" nếu có
-            'image'               => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'main_image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            // Ảnh minh hoạ mới
-            'images.*'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            // Xoá ảnh: hỗ trợ cả hai tên mảng
-            'remove_image_ids.*'  => 'nullable|integer',
-            'delete_images.*'     => 'nullable',
-        ]);
+    $totalReviews = Review::where('product_id', $product->id)
+        ->where('status', 'approved')
+        ->count();
 
-        // Map tường minh
-        $product->name               = $validated['name'];
-        $product->price              = $validated['price'];
-        $product->quantity           = $validated['quantity'];
-        $product->category_id        = $validated['category_id'];
-        $product->brand_id           = $validated['brand_id'];
-        $product->description        = $request->input('description');
-        $product->usage_instructions = $request->input('usage_instructions');
-        $product->is_hotdeal         = $request->boolean('is_hotdeal'); // <--
+    $avgRating = $totalReviews
+        ? round(
+            Review::where('product_id', $product->id)
+                ->where('status', 'approved')
+                ->avg('rating'),
+            1
+        )
+        : 0;
 
-        // Ảnh chính: nhận 'image' (ưu tiên) hoặc 'main_image'
-        $mainFile = $request->file('image') ?: $request->file('main_image');
-        if ($mainFile) {
-            $fname = Str::uuid()->toString().'.'.$mainFile->getClientOriginalExtension();
-            $dest  = public_path('images/product');
-            if (!is_dir($dest)) { @mkdir($dest, 0775, true); }
-            $mainFile->move($dest, $fname);
+    $ratingCountsRaw = Review::where('product_id', $product->id)
+        ->where('status', 'approved')
+        ->selectRaw('rating, COUNT(*) as total')
+        ->groupBy('rating')
+        ->pluck('total', 'rating');
 
-            // Xoá ảnh cũ nếu tồn tại
-            if (!empty($product->image)) {
-                $old = public_path('images/product/'.$product->image);
-                if (is_file($old)) @unlink($old);
-            }
-            if (\Schema::hasColumn('products', 'image')) {
-                $product->image = $fname;
-            }
-        }
-
-        $product->save();
-
-        /* ====================== XÓA ẢNH GALLERY ====================== */
-        $removeIds = (array) $request->input('remove_image_ids', []);
-        $deleteAny = (array) $request->input('delete_images', []);
-
-        // Xoá theo ID (từ bảng product_images)
-        if (!empty($removeIds)) {
-            $imgs = ProductImage::whereIn('id', $removeIds)
-                ->where('product_id', $product->id)
-                ->get();
-
-            foreach ($imgs as $img) {
-                $full = public_path(trim($img->path, '/').'/'.$img->file_name);
-                if (is_file($full)) @unlink($full);
-                $img->delete();
-            }
-        }
-
-        // Xoá theo chuỗi đường dẫn (khi form gửi URL/filename, không có id)
-        foreach ($deleteAny as $v) {
-            if (ctype_digit((string) $v)) continue; // đã xử lý ở trên
-            $basename = basename(parse_url($v, PHP_URL_PATH));
-            // thử tìm theo file_name
-            $img = ProductImage::where('product_id', $product->id)
-                ->where('file_name', $basename)
-                ->first();
-
-            if ($img) {
-                $full = public_path(trim($img->path, '/').'/'.$img->file_name);
-                if (is_file($full)) @unlink($full);
-                $img->delete();
-            } else {
-                // fallback: xoá file thẳng nếu tồn tại trong thư mục gallery
-                $full = public_path('images/product/gallery/'.$basename);
-                if (is_file($full)) @unlink($full);
-            }
-        }
-
-        /* ============ CẬP NHẬT ALT / SORT ẢNH HIỆN CÓ ============ */
-        $alts  = (array) $request->input('alt', []);
-        $sorts = (array) $request->input('sort_order', []);
-        foreach ($product->images as $img) {
-            if (array_key_exists($img->id, $alts)) {
-                $img->alt = $alts[$img->id];
-            }
-            if (array_key_exists($img->id, $sorts) && $sorts[$img->id] !== '') {
-                $img->sort_order = (int) $sorts[$img->id];
-            }
-            $img->save();
-        }
-
-        /* ====================== THÊM ẢNH MỚI ====================== */
-        $galleryPath = 'images/product/gallery';
-        if (!is_dir(public_path($galleryPath))) {
-            @mkdir(public_path($galleryPath), 0775, true);
-        }
-
-        $altsNew  = (array) $request->input('alt_new', []);
-        $sortsNew = (array) $request->input('sort_new', []);
-        $i = 0;
-
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $file) {
-                if (!$file->isValid()) continue;
-                $fname = Str::uuid()->toString().'.'.$file->getClientOriginalExtension();
-                $file->move(public_path($galleryPath), $fname);
-
-                ProductImage::create([
-                    'product_id' => $product->id,
-                    'file_name'  => $fname,
-                    'path'       => $galleryPath,
-                    'alt'        => $altsNew[$i] ?? null,
-                    'sort_order' => is_numeric($sortsNew[$i] ?? null) ? (int) $sortsNew[$i] : 0,
-                ]);
-                $i++;
-            }
-        }
-
-        return redirect()
-            ->route('admin.product.edit', $product->id)
-            ->with('success', 'Cập nhật sản phẩm thành công');
+    $ratingCounts = [];
+    for ($i = 1; $i <= 5; $i++) {
+        $ratingCounts[$i] = $ratingCountsRaw[$i] ?? 0;
     }
 
-    public function destroy($id)
+    $isFavorited = false;
+
+    if (Auth::check()) {
+        $isFavorited = Wishlist::where('user_id', Auth::id())
+            ->where('product_id', $product->id)
+            ->exists();
+    }
+
+    return view('show', [
+        'product'                => $product,
+        'recentlyViewedProducts' => $recentlyViewedProducts,
+        'capacityProducts'       => $capacityProducts, // thêm dòng này
+        'reviews'                => $reviews,
+        'avgRating'              => $avgRating,
+        'totalReviews'           => $totalReviews,
+        'ratingCounts'           => $ratingCounts,
+        'ratingFilter'           => $ratingFilter,
+        'isFavorited'            => $isFavorited,
+    ]);
+}
+
+    public function index(Request $request)
     {
-        $product = Product::with('images')->findOrFail($id);
+        $q = trim($request->get('q', ''));
 
-        // Xoá toàn bộ ảnh gallery
-        foreach ($product->images as $img) {
-            $full = public_path(trim($img->path, '/').'/'.$img->file_name);
-            if (is_file($full)) @unlink($full);
-            $img->delete();
-        }
+        $products = Product::query()
+            ->when($q !== '', function ($qr) use ($q) {
+                $qr->where('name', 'like', "%{$q}%")
+                    ->orWhere('sku', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%");
+            })
+            ->latest('id')
+            ->paginate(12)
+            ->appends(['q' => $q]);
 
-        // Xoá ảnh chính
-        if (!empty($product->image)) {
-            $main = public_path('images/product/'.$product->image);
-            if (is_file($main)) @unlink($main);
-        }
-
-        $product->delete();
-
-        return redirect()->route('admin.product.index')->with('success', 'Đã xóa sản phẩm');
+        return view('products.index', compact('products', 'q'));
     }
 }

@@ -1,13 +1,23 @@
 @extends('admin.layout')
 
 @section('content')
-<div class="p-6">
-    <h2 class="text-xl font-bold mb-4">Cập nhật sản phẩm</h2>
+<div class="p-6 admin-page">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="admin-page-title">Cập nhật sản phẩm</h1>
+        </div>
 
-    {{-- Thông báo lỗi --}}
+        <a href="{{ route('admin.product.index') }}" class="btn-admin-light">← Quay lại danh sách</a>
+    </div>
+
+    @if (session('success'))
+        <div class="admin-alert admin-alert-success mb-4">{{ session('success') }}</div>
+    @endif
+
     @if ($errors->any())
-        <div class="mb-4 border border-red-300 bg-red-50 text-red-700 p-3 rounded">
-            <ul class="list-disc list-inside">
+        <div class="admin-alert admin-alert-danger mb-4">
+            <div class="font-semibold mb-2">Vui lòng kiểm tra lại thông tin:</div>
+            <ul class="list-disc ps-4 mb-0">
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -15,130 +25,175 @@
         </div>
     @endif
 
-    <form action="{{ route('admin.product.update', $product) }}" method="POST" enctype="multipart/form-data" class="bg-white p-6 rounded shadow">
+    <form method="POST" action="{{ route('admin.product.update', $product) }}" enctype="multipart/form-data" class="space-y-6">
         @csrf
         @method('PUT')
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <div class="mb-4">
-                    <label class="block font-semibold mb-1">Tên sản phẩm</label>
-                    <input type="text" name="name" value="{{ old('name', $product->name) }}" class="w-full border px-3 py-2 rounded" required>
-                </div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="admin-card">
+                <div class="admin-card-body">
+                    <h3 class="admin-section-title">Thông tin cơ bản</h3>
 
-                <div class="mb-4">
-                    <label class="block font-semibold mb-1">Giá</label>
-                    <input type="number" name="price" value="{{ old('price', $product->price) }}" class="w-full border px-3 py-2 rounded" min="0" required>
-                </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="admin-label">Tên sản phẩm</label>
+                            <input type="text" name="name" value="{{ old('name', $product->name) }}" class="admin-input" required>
+                        </div>
 
-                <div class="mb-4">
-                    <label class="block font-semibold mb-1">Số lượng</label>
-                    <input type="number" name="quantity" value="{{ old('quantity', $product->quantity) }}" class="w-full border px-3 py-2 rounded" min="0" required>
-                </div>
+                        <div>
+                            <label class="admin-label">SKU</label>
+                            <input type="text" name="sku" value="{{ old('sku', $product->sku) }}" class="admin-input">
+                        </div>
 
-                <div class="mb-4">
-                    <label class="block font-semibold mb-1">Danh mục</label>
-                    <select name="category_id" class="w-full border px-3 py-2 rounded" required>
-                        @foreach ($categories as $category)
-                            <option value="{{ $category->id }}" {{ $category->id == old('category_id', $product->category_id) ? 'selected' : '' }}>
-                                {{ $category->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="admin-label">Mã nhóm sản phẩm</label>
+                                <input
+                                    type="text"
+                                    name="group_code"
+                                    value="{{ old('group_code', $product->group_code) }}"
+                                    class="admin-input"
+                                    placeholder="Ví dụ: sua-rua-mat-cerave"
+                                >
+                                <div class="admin-help">
+                                    Các sản phẩm cùng loại nhưng khác dung tích phải dùng cùng một mã nhóm.
+                                </div>
+                            </div>
 
-                <div class="mb-4">
-                    <label class="block font-semibold mb-1">Thương hiệu</label>
-                    <select name="brand_id" class="w-full border px-3 py-2 rounded" required>
-                        @foreach ($brands as $brand)
-                            <option value="{{ $brand->id }}" {{ $brand->id == old('brand_id', $product->brand_id) ? 'selected' : '' }}>
-                                {{ $brand->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                            <div>
+                                <label class="admin-label">Dung tích</label>
+                                <input
+                                    type="text"
+                                    name="capacity"
+                                    value="{{ old('capacity', $product->capacity) }}"
+                                    class="admin-input"
+                                    placeholder="Ví dụ: 100ml, 250ml, 500ml"
+                                >
+                                <div class="admin-help">
+                                    Ví dụ: 100ml, 250ml, 500ml, 1L...
+                                </div>
+                            </div>
+                        </div>
 
-                <div class="mb-4">
-                    <label class="inline-flex items-center gap-2">
-                        <input type="checkbox" name="is_hotdeal" value="1" class="rounded border" {{ old('is_hotdeal', $product->is_hotdeal) ? 'checked' : '' }}>
-                        <span class="font-semibold">Gắn Hot Deal</span>
-                    </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="admin-label">Giá bán (VNĐ)</label>
+                                <input type="number" name="price" min="0" value="{{ old('price', $product->price) }}" class="admin-input" required>
+                            </div>
+
+                            <div>
+                                <label class="admin-label">Giá gốc (VNĐ)</label>
+                                <input type="number" name="original_price" min="0" value="{{ old('original_price', $product->original_price) }}" class="admin-input">
+                            </div>
+                        </div>
+
+                        <div class="admin-upload-box">
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="hidden" name="is_hotdeal" value="0">
+                                <input type="checkbox" id="is_hotdeal" name="is_hotdeal" value="1" {{ old('is_hotdeal', $product->is_hotdeal) == 1 ? 'checked' : '' }}>
+                                <span class="font-semibold text-gray-800">Gắn Hot Deal</span>
+                            </label>
+
+                            <div class="mt-4" id="discountWrap">
+                                <label class="admin-label">Giảm giá (%) khi Hot Deal</label>
+                                <input type="number" id="discount_percent" name="discount_percent" min="0" max="100" value="{{ old('discount_percent', $product->discount_percent) }}" class="admin-input">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="admin-label">Danh mục</label>
+                            <select name="category_id" class="admin-select" required>
+                                @foreach ($categories as $category)
+                                    <option value="{{ $category->id }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
+                                        {{ $category->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="admin-label">Thương hiệu</label>
+                            <select name="brand_id" class="admin-select" required>
+                                @foreach ($brands as $brand)
+                                    <option value="{{ $brand->id }}" {{ old('brand_id', $product->brand_id) == $brand->id ? 'selected' : '' }}>
+                                        {{ $brand->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div>
-                {{-- Mô tả / HDSD --}}
-                <div class="mb-4">
-                    <label class="block font-semibold mb-1">Mô tả</label>
-                    <textarea name="description" rows="6" class="w-full border px-3 py-2 rounded">{{ old('description', $product->description) }}</textarea>
-                </div>
+            <div class="admin-card">
+                <div class="admin-card-body">
+                    <h3 class="admin-section-title">Mô tả và hình ảnh</h3>
 
-                <div class="mb-4">
-                    <label class="block font-semibold mb-1">Hướng dẫn sử dụng</label>
-                    <textarea name="usage_instructions" rows="4" class="w-full border px-3 py-2 rounded">{{ old('usage_instructions', $product->usage_instructions) }}</textarea>
-                </div>
-
-                {{-- Ảnh đại diện --}}
-                <div class="mb-6">
-                    <label class="block font-semibold mb-1">Ảnh đại diện</label>
-                    @if ($product->image)
-                        <div class="mb-2">
-                            <img src="{{ asset('images/product/' . $product->image) }}" alt="{{ $product->name }}" class="h-24 object-contain border p-1 bg-white rounded">
+                    <div class="space-y-5">
+                        <div>
+                            <label class="admin-label">Mô tả</label>
+                            <textarea name="description" id="description" rows="6" class="admin-textarea">{{ old('description', $product->description) }}</textarea>
                         </div>
-                    @endif
-                    <input type="file" name="image" class="w-full border px-3 py-2 rounded">
-                    <p class="text-sm text-gray-500">Chọn ảnh mới nếu muốn thay đổi (JPEG, PNG, tối đa 2MB)</p>
-                </div>
 
-                {{-- Ảnh minh hoạ (nhiều ảnh) --}}
-                <div class="mb-4">
-                    <label class="block font-semibold mb-2">Ảnh minh hoạ (có thể chọn nhiều)</label>
-                    <input type="file" name="images[]" multiple class="w-full border px-3 py-2 rounded" id="imagesInput" accept="image/*">
-                    <p class="text-sm text-gray-500 mt-1">Bạn có thể chọn nhiều ảnh cùng lúc (JPEG, PNG, tối đa 2MB/ảnh)</p>
+                        <div>
+                            <label class="admin-label">Hướng dẫn sử dụng</label>
+                            <textarea name="usage_instructions" id="usage_instructions" rows="5" class="admin-textarea">{{ old('usage_instructions', $product->usage_instructions) }}</textarea>
+                        </div>
 
-                    {{-- Preview ảnh mới chọn --}}
-                    <div id="previewNew" class="mt-3 grid grid-cols-3 md:grid-cols-4 gap-3"></div>
-                </div>
+                        <div class="admin-upload-box">
+                            <label class="admin-label">Ảnh đại diện</label>
+                            <input type="file" id="image" name="image" accept="image/*" class="admin-input">
 
-                {{-- Ảnh minh hoạ hiện có --}}
-                @php
-                    // $product->images có thể là collection object (id, path/url) hoặc mảng tên file
-                    $existing = collect($product->images ?? []);
-                @endphp
-
-                @if($existing->count() > 0)
-                <div class="mb-4">
-                    <label class="block font-semibold mb-2">Ảnh minh hoạ hiện có</label>
-                    <div class="grid grid-cols-3 md:grid-cols-4 gap-3">
-                        @foreach($existing as $img)
-                            @php
-                                $imgId = is_object($img) && isset($img->id) ? $img->id : null;
-                                $src = is_string($img)
-                                    ? asset('images/product/' . $img)
-                                    : (isset($img->url) ? $img->url : (isset($img->path) ? asset($img->path) : ''));
-                                $valueForDeletion = $imgId ?? $src; // gửi id nếu có, không thì gửi src
-                            @endphp
-                            <label class="block">
-                                <img src="{{ $src }}" class="w-full aspect-square object-cover rounded border" alt="preview">
-                                <div class="mt-1 flex items-center gap-2">
-                                    <input type="checkbox" name="delete_images[]" value="{{ $valueForDeletion }}" class="rounded border">
-                                    <span class="text-sm">Xoá ảnh này</span>
+                            @if($product->image)
+                                <div class="mt-4 flex items-start gap-4">
+                                    <img src="{{ asset('images/product/'.$product->image) }}" class="h-24 w-24 object-cover rounded-xl border">
+                                    <label class="inline-flex items-center gap-2 text-sm text-red-600">
+                                        <input type="checkbox" name="remove_image" value="1">
+                                        <span>Xóa ảnh đại diện hiện tại</span>
+                                    </label>
                                 </div>
-                            </label>
-                        @endforeach
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">Tick để xoá ảnh. Nếu ảnh là từ bảng liên kết, hệ thống sẽ xoá theo <em>ID</em>; nếu là ảnh tĩnh theo tên file, sẽ xoá theo <em>đường dẫn</em>.</p>
-                </div>
-                @endif
+                            @endif
+                        </div>
 
+                        <div class="admin-upload-box">
+                            <label class="admin-label">Ảnh minh hoạ mới</label>
+                            <input type="file" id="imagesInput" name="images[]" accept="image/*" multiple class="admin-input">
+                            <div id="previewNew" class="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4 min-h-[80px]"></div>
+                        </div>
+
+                        @if($product->images && $product->images->count())
+                            <div class="admin-card border">
+                                <div class="admin-card-body">
+                                    <h4 class="admin-section-title mb-3">Ảnh minh hoạ hiện có</h4>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        @foreach($product->images as $img)
+                                            <div class="admin-upload-box text-center" id="img-card-{{ $img->id }}">
+                                                <img src="{{ asset('storage/'.$img->path.'/'.$img->file_name) }}" class="admin-thumb mb-3" alt="{{ $img->alt ?? 'Ảnh minh hoạ' }}">
+                                                <button type="button"
+                                                        class="admin-action-btn delete btn-delete-image"
+                                                        data-action="{{ route('admin.product.images.destroy', $img) }}"
+                                                        data-image-id="{{ $img->id }}"
+                                                        data-product-id="{{ $product->id }}">
+                                                    Xoá ảnh
+                                                </button>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="pt-2">
-            <button type="submit" class="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600">Cập nhật</button>
+        <div class="flex flex-wrap gap-3">
+            <button type="submit" class="btn-admin-pink">Cập nhật</button>
+            <a href="{{ route('admin.product.index') }}" class="btn-admin-light">Huỷ</a>
         </div>
     </form>
 </div>
 
-<script src="{{ asset('js/detail.js') }}" defer></script>
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+<script src="{{ asset('js/edit.js') }}?v={{ file_exists(public_path('js/edit.js')) ? filemtime(public_path('js/edit.js')) : time() }}" defer></script>
 @endsection

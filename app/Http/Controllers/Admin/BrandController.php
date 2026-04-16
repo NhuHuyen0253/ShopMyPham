@@ -8,9 +8,18 @@ use Illuminate\Support\Str;
 
 class BrandController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $brands = Brands::latest()->paginate(10);
+        $q = $request->string('q')->trim();
+
+        $brands = Brands::query()
+            ->when($q->isNotEmpty(), fn($query) =>
+                $query->where('name', 'like', '%'.$q.'%')
+            )
+            ->orderByDesc('id')
+            ->paginate(10) // tuỳ chỉnh số trang
+            ->appends($request->only('q'));
+
         return view('admin.brand.index', compact('brands'));
     }
 
