@@ -66,8 +66,6 @@
       });
   });
 
-  /* ========== Trang CREATE/EDIT: preview ảnh mới + ALT/Thứ tự ========== */
-  // Tự động hoạt động nếu có #imagesInput và #previewNew trong DOM
   function initNewImagesPreview() {
     var input = document.getElementById('imagesInput');
     var preview = document.getElementById('previewNew');
